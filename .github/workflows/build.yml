@@ -1,0 +1,97 @@
+name: Build & Release macOS App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0; defaults to latest)'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+
+      - name: Build Universal LiveScapes.app
+        run: |
+          chmod +x scripts/build_app.sh
+          ./scripts/build_app.sh --universal
+
+      - name: Verify Universal Binary & Bundle
+        run: |
+          file build/LiveScapes.app/Contents/MacOS/LiveScapes
+          codesign --verify --deep --strict build/LiveScapes.app
+
+      - name: Package ZIP and DMG
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent build/LiveScapes.app dist/LiveScapes-macOS-universal.zip
+          hdiutil create -volname "LiveScapes" -srcfolder build/LiveScapes.app -ov -format UDZO dist/LiveScapes-macOS-universal.dmg
+
+      - name: Determine Release Tag
+        id: release_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$TAG" ]; then TAG="latest"; fi
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: LiveScapes ${{ steps.release_tag.outputs.tag }}
+          prerelease: ${{ steps.release_tag.outputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            dist/LiveScapes-macOS-universal.zip
+            dist/LiveScapes-macOS-universal.dmg
+          body: |
+            ## LiveScapes for macOS (Universal: Apple Silicon & Intel)
+
+            **LiveScapes** is a native macOS live wallpaper manager (macOS 14.0+) that lets you preview and apply animated video wallpapers to both your **Desktop** and **Lock Screen**.
+
+            ### What LiveScapes Does
+            - **Official Desktop & Lock Screen Live Wallpapers**: Registers and applies `.mov`/`.mp4` videos through macOS `WallpaperAgent` so they animate seamlessly on both your Desktop and Lock Screen (with optional continuous desktop loop overlay).
+            - **Apple 4K Aerials**: Browse and apply macOS's built-in 4K Aerials catalog.
+            - **My Live Wallpapers**: Import local `.mov` or `.mp4` videos (or save wallpapers from feeds locally) with automatic thumbnail generation.
+            - **Configurable External Feeds**: Add one or more custom JSON API / manifest feeds or web pattern feeds without any hardcoded third-party services.
+            - **Solar Auto-Adjust (`Library → Solar`)**: Automatically rotates your Desktop and Lock Screen live wallpapers based on real-time solar altitude (Morning, Day, Evening, Night), with support for saving and switching between named configurations (e.g. *Cyberpunk*, *Minecraft*) or generating a static solar `.heic` for the Desktop.
+
+            ---
+
+            ### Installation & Gatekeeper Instructions
+            1. Download either **`LiveScapes-macOS-universal.dmg`** or **`LiveScapes-macOS-universal.zip`** below.
+            2. Move **`LiveScapes.app`** into your **`/Applications`** folder.
+            3. Because this release is ad-hoc signed (not notarized with an Apple Developer ID), macOS Gatekeeper will block the first launch. To allow it:
+               - **Terminal (fastest):**
+                 ```bash
+                 xattr -cr /Applications/LiveScapes.app
+                 ```
+               - **Or via System Settings:** Try opening `LiveScapes.app`, click **Done** on the prompt, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+            ---
+
+            ### Usage Guide
+            - **Import a Local Video**: Click **+** (**Create Live Wallpaper**) in the toolbar, drop a `.mov` or `.mp4` file, name it, and save it to **My Live Wallpapers**.
+            - **Apply to Desktop / Lock Screen**: Select any wallpaper to preview it live in the right-hand inspector, then click **Apply to Desktop & Lock Screen** (or **Desktop Only** / **Lock Screen Only**).
+            - **Add External Feeds**: Click **Configure Feeds** in the toolbar (or **External Feeds → Configure Feeds…** in the sidebar) to add JSON API/manifest feeds or web pattern feeds, or import a JSON feed configuration.
+            - **Solar Auto-Adjust**: Open **Library → Solar** in the sidebar, assign wallpapers from **My Live Wallpapers** to Morning, Day, Evening, and Night, optionally save multiple named configurations, and enable **Auto-Rotate Live Wallpapers by Solar Position** (or click **Apply Live Now**).
