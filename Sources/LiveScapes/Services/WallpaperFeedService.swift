@@ -215,7 +215,7 @@ enum WallpaperFeedClient {
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppNetwork.session.data(for: request)
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
             throw NSError(domain: "LiveScapes", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Feed “\(feed.name)” returned HTTP \(http.statusCode)."])
         }
@@ -301,7 +301,7 @@ enum WallpaperFeedClient {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppNetwork.session.data(for: request)
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
             throw NSError(domain: "LiveScapes", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Feed “\(feed.name)” returned HTTP \(http.statusCode)."])
         }

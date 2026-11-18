@@ -127,7 +127,12 @@ final class PlayerContainerView: NSView {
     private func loadPlayer(with url: URL) {
         cleanupPlayer()
 
-        let asset = AVURLAsset(url: url)
+        let assetOptions: [String: Any] = url.isFileURL ? [:] : [
+            "AVURLAssetHTTPHeaderFieldsKey": [
+                "User-Agent": AppNetwork.browserUserAgent
+            ]
+        ]
+        let asset = AVURLAsset(url: url, options: assetOptions)
         let templateItem = AVPlayerItem(asset: asset)
 
         let activePlayer: AVPlayer

@@ -41,7 +41,7 @@ final class VideoDownloader: NSObject, ObservableObject {
         var lastTempURL: URL?
         var lastResponse: URLResponse?
         for candidate in candidates {
-            let (t, r) = try await URLSession.shared.download(from: candidate, delegate: delegate)
+            let (t, r) = try await AppNetwork.session.download(from: candidate, delegate: delegate)
             lastTempURL = t
             lastResponse = r
             if let http = r as? HTTPURLResponse, http.statusCode == 404 {

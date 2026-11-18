@@ -269,7 +269,7 @@ enum LockScreenInstaller {
     private static func restartWallpaperAgent() {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-        task.arguments = ["WallpaperAgent"]
+        task.arguments = ["WallpaperAgent", "WallpaperAerialsExtension", "WallpaperVideoExtension"]
         try? task.run()
         task.waitUntilExit()
     }

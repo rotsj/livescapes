@@ -103,7 +103,7 @@ struct CachedThumbnailView: View {
                 do {
                     var request = URLRequest(url: candidate)
                     request.timeoutInterval = 15
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let (data, response) = try await AppNetwork.session.data(for: request)
                     if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
                         if http.statusCode == 404 { break }
                         continue
